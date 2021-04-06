@@ -18,9 +18,18 @@ func (r *RBtree) LeftRotation(x *Node) {
 	y := x.Right
 	x.Right = y.Left
 
+	if x.Right != nil {
+		x.Right.Parent = x
+	}
+
 	// if y is not root
 	if x.Parent != nil {
 		y.Parent = x.Parent
+		if x == x.Parent.Left {
+			x.Parent.Left = y
+		} else {
+			x.Parent.Right = y
+		}
 	} else {
 		y.Parent = nil
 		r.Root = y
@@ -34,9 +43,18 @@ func (r *RBtree) RightRotation(x *Node) {
 	y := x.Left
 	x.Left = y.Right
 
+	if x.Left != nil {
+		x.Left.Parent = x
+	}
+
 	// if y is not root
 	if x.Parent != nil {
 		y.Parent = x.Parent
+		if x == x.Parent.Left {
+			x.Parent.Left = y
+		} else {
+			x.Parent.Right = y
+		}
 	} else {
 		y.Parent = nil
 		r.Root = y
@@ -98,17 +116,22 @@ func (r *RBtree) Insert(newVal int) {
 
 		if parent == grandParent.Left {
 			uncle := grandParent.Right
+
+			// if uncle color is red, all we need to do is re-color
 			if uncle != nil && uncle.Color == 1 {
 				grandParent.Color = 1
 				parent.Color = 0
 				uncle.Color = 0
 				k = grandParent
 			} else {
+				// left right case
 				if k == parent.Right {
 					r.LeftRotation(parent)
 					k = parent
 					parent = k.Parent
 				}
+
+				// left left case
 				r.RightRotation(grandParent)
 				t := parent.Color
 				parent.Color = grandParent.Color
@@ -117,24 +140,27 @@ func (r *RBtree) Insert(newVal int) {
 			}
 		} else {
 			uncle := grandParent.Left
+
+			// if uncle color is red, all we need to do is re-color
 			if uncle != nil && uncle.Color == 1 {
 				grandParent.Color = 1
 				parent.Color = 0
 				uncle.Color = 0
 				k = grandParent
 			} else {
+				// right left case
 				if k == parent.Left {
 					r.RightRotation(parent)
 					k = parent
 					parent = k.Parent
 				}
 
+				// right right case
 				r.LeftRotation(grandParent)
 				t := parent.Color
 				parent.Color = grandParent.Color
 				grandParent.Color = t
 				k = parent
-
 			}
 		}
 	}
@@ -188,13 +214,8 @@ func TravelInOrder(n *Node) {
 		return
 	}
 	TravelInOrder(n.Left)
-
-	fmt.Println("value")
-	fmt.Println(n.Value)
-	fmt.Println("color")
-	fmt.Println(n.Color)
 	fmt.Println(n)
-
+	fmt.Println(n.Value)
 	TravelInOrder(n.Right)
 }
 func main() {
