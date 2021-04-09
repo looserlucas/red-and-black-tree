@@ -10,8 +10,194 @@ type Node struct {
 	Right  *Node
 }
 
+func (n *Node) Successor() (s *Node) {
+	x := n
+	for x.Left != nil {
+		x = x.Left
+	}
+	return x
+}
+
+func (n *Node) IsOnLeft() bool {
+	// if root
+	if n.Parent == nil {
+		return false
+	}
+	return n == n.Parent.Left
+}
+
+func (n *Node) Uncle() (s *Node) {
+	if n.Parent == nil || n.Parent.Parent == nil {
+		return nil
+	}
+
+	if n.Parent.IsOnLeft() {
+		return n.Parent.Right
+	} else {
+		return n.Parent.Left
+	}
+}
+
+func (n *Node) Sibling() (s *Node) {
+	if n.IsOnLeft() {
+		return n.Right
+	} else {
+		return n.Left
+	}
+}
+
+func (n *Node) HasRedChild() bool {
+	if n.Left != nil {
+		return n.Left.Color == 1
+	} else if n.Right != nil {
+		return n.Right.Color == 1
+	} else {
+		return false
+	}
+}
+
+func SwapColor(x *Node, y *Node) {
+	temp := x.Color
+	x.Color = y.Color
+	y.Color = temp
+}
+
+func SwapValue(x *Node, y *Node) {
+	temp := x.Value
+	x.Value = y.Value
+	y.Value = temp
+}
+
 type RBtree struct {
 	Root *Node
+}
+
+/*
+func (r *RBtree) FixRedRed(x *Node) {
+	if x == r.Root {
+		x.Color = 0
+		return
+	}
+
+	parent := x.Parent
+	grandparents := x.Parent.Parent
+	uncle := x.Uncle()
+
+	if parent.Color != 0 {
+		if uncle != nil && uncle.Color == 1 {
+			parent.Color = 0
+			uncle.Color = 0
+			grandparents.Color = 1
+			r.FixRedRed(grandparents)
+		} else {
+			if parent.IsOnLeft() {
+				// Left Left case
+				if x.IsOnLeft() {
+					SwapColor(parent, grandparents)
+				} else {
+					r.LeftRotation(parent)
+					SwapColor(x, grandparents)
+				}
+
+				// Left Right case
+				r.RightRotation(grandparents)
+			} else {
+				// Right Right case
+				if !x.IsOnLeft() {
+					SwapColor(parent, grandparents)
+				} else {
+					r.RightRotation(parent)
+					SwapColor(x, grandparents)
+				}
+
+				r.LeftRotation(grandparents)
+			}
+		}
+	}
+}
+*/
+
+func (r *RBtree) FixDoubleBlack(x *Node) {
+	if x == r.Root {
+		return
+	}
+
+	sibling := x.Sibling()
+	parent := x.Parent
+
+	if sibling == nil {
+		// no sibling, recursive up
+		r.FixDoubleBlack(parent)
+	} else {
+		// if sibling is red
+		if sibling.Color == 1 {
+			parent.Color = 1
+			sibling.Color = 0
+			if sibling.IsOnLeft() {
+				r.RightRotation(parent)
+			} else {
+				r.LeftRotation(parent)
+			}
+
+			r.FixDoubleBlack(x)
+		} else {
+			// if sibling is black
+			if sibling.HasRedChild() {
+				// if red child is left
+				if sibling.Left != nil && sibling.Left.Color == 1 {
+					if sibling.IsOnLeft() {
+						// left left case
+						sibling.Left.Color = sibling.Color
+						sibling.Color = parent.Color
+						r.RightRotation(parent)
+					} else {
+						// right left case
+						sibling.Left.Color = parent.Color
+						r.RightRotation(sibling)
+						r.LeftRotation(parent)
+					}
+				} else {
+					// if red child is right
+					if !sibling.IsOnLeft() {
+						// right right case
+						sibling.Right.Color = sibling.Color
+						sibling.Color = parent.Color
+						r.LeftRotation(parent)
+					} else {
+						sibling.Right.Color = parent.Color
+						r.LeftRotation(sibling)
+						r.RightRotation(parent)
+					}
+				}
+				parent.Color = 0
+			} else {
+				// 2 black child
+				sibling.Color = 1
+				if parent.Color == 0 {
+					r.FixDoubleBlack(parent)
+				} else {
+					parent.Color = 0
+				}
+			}
+		}
+	}
+}
+func (r *RBtree) BSTReplace(x *Node) *Node {
+	// 2 children
+	if (x.Left != nil) && (x.Right != nil) {
+		return x.Right.Successor()
+	}
+
+	if (x.Left == nil) && (x.Right == nil) {
+		return nil
+	}
+
+	// 1 child
+	if x.Left != nil {
+		return x.Left
+	} else {
+		return x.Right
+	}
 }
 
 func (r *RBtree) LeftRotation(x *Node) {
@@ -133,9 +319,12 @@ func (r *RBtree) Insert(newVal int) {
 
 				// left left case
 				r.RightRotation(grandParent)
+
+				// swap color of parent and grandparent
 				t := parent.Color
 				parent.Color = grandParent.Color
 				grandParent.Color = t
+
 				k = parent
 			}
 		} else {
@@ -207,6 +396,71 @@ func (r *RBtree) Insert(newVal int) {
 
 		r.Root.Color = 0
 	*/
+}
+
+func (r *RBtree) Delete(v *Node) {
+	u := r.BSTReplace(v)
+
+	uvBlack := (u == nil || u.Color == 0) && (v == nil || v.Color == 0)
+	parent := v.Parent
+
+	if u == nil {
+		// if u == nil -> v is a leaf
+		if v == r.Root {
+			r.Root = nil
+		} else {
+			if uvBlack {
+				// if u and v are both black
+				// v is leaf, then fix double black at v
+				r.FixDoubleBlack(v)
+			} else {
+				// u == nil, and uvBlack is false then v must be red
+				if v.Sibling() != nil {
+					// if v has sibling then we have to change sibling to red to make sure that black height is not changed
+					v.Sibling().Color = 1
+				}
+			}
+
+			// delete v from the tree
+			if v.IsOnLeft() {
+				parent.Left = nil
+			} else {
+				parent.Right = nil
+			}
+		}
+		v = nil
+		return
+	}
+
+	//
+	if v.Left == nil || v.Right == nil {
+		// v has 1 child
+		if v == r.Root {
+			// move u -> v, then delete u
+			v.Value = u.Value
+			v.Left = nil
+			v.Right = nil
+			u = nil
+		} else {
+			if v.IsOnLeft() {
+				parent.Left = u
+			} else {
+				parent.Right = u
+			}
+			v = nil
+			u.Parent = parent
+			if uvBlack {
+				r.FixDoubleBlack(u)
+			} else {
+				u.Color = 0
+			}
+		}
+		return
+	}
+
+	// if v has 2 children, swap values with successor and recurse
+	SwapColor(u, v)
+	r.Delete(u)
 }
 
 func TravelInOrder(n *Node) {
