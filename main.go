@@ -404,6 +404,7 @@ func (r *RBtree) Delete(v *Node) {
 	uvBlack := (u == nil || u.Color == 0) && (v == nil || v.Color == 0)
 	parent := v.Parent
 
+	// case 1, u nil
 	if u == nil {
 		// if u == nil -> v is a leaf
 		if v == r.Root {
@@ -432,7 +433,7 @@ func (r *RBtree) Delete(v *Node) {
 		return
 	}
 
-	//
+	// case 2, v has 1 child
 	if v.Left == nil || v.Right == nil {
 		// v has 1 child
 		if v == r.Root {
@@ -458,8 +459,8 @@ func (r *RBtree) Delete(v *Node) {
 		return
 	}
 
-	// if v has 2 children, swap values with successor and recurse
-	SwapColor(u, v)
+	// if v has 2 children, swap values with successor and recurse, until case 1 or case 2 happens
+	SwapValue(u, v)
 	r.Delete(u)
 }
 
